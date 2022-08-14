@@ -23,15 +23,21 @@ package net.christianbeier.droidvnc_ng;
 
 public class Constants {
 
-    public static final int DEFAULT_PORT = 5900;
+    public static final int DEFAULT_PORT_LISTEN = 5900;
     public static final int DEFAULT_PORT_REVERSE = 5500;
     public static final int DEFAULT_PORT_REPEATER = 5500;
     public static final float DEFAULT_SCALING = 1.0f;
-    public static final String PREFS_KEY_SETTINGS_PORT = "settings_port";
+    public static final String DEFAULT_PASSWORD = "";
+    public static final boolean DEFAULT_FILE_TRANSFER = true;
+    public static final boolean DEFAULT_VIEW_ONLY = false;
+
+    public static final String PREFS_KEY_SETTINGS_PORT_LISTEN = "settings_port";
     public static final String PREFS_KEY_SETTINGS_PASSWORD = "settings_password" ;
     public static final String PREFS_KEY_SETTINGS_START_ON_BOOT = "settings_start_on_boot" ;
     public static final String PREFS_KEY_SETTINGS_SCALING = "settings_scaling" ;
     public static final String PREFS_KEY_REVERSE_VNC_LAST_HOST = "reverse_vnc_last_host" ;
     public static final String PREFS_KEY_REPEATER_VNC_LAST_HOST = "repeater_vnc_last_host" ;
     public static final String PREFS_KEY_REPEATER_VNC_LAST_ID = "repeater_vnc_last_id" ;
+    public static final String PREFS_KEY_SETTINGS_FILE_TRANSFER = "settings_file_transfer" ;
+    public static final String PREFS_KEY_SETTINGS_VIEW_ONLY = "settings_view_only" ;
 }
