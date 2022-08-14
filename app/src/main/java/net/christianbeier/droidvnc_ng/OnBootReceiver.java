@@ -43,6 +43,11 @@ public class OnBootReceiver extends BroadcastReceiver {
             Log.i(TAG, "onReceive: configured to start");
             Intent intent = new Intent(context, MainService.class);
             intent.setAction(MainService.ACTION_START);
+            intent.putExtra(MainService.EXTRA_PASSWORD, prefs.getString(Constants.PREFS_KEY_SETTINGS_PASSWORD, Constants.DEFAULT_PASSWORD));
+            intent.putExtra(MainService.EXTRA_SCALING, prefs.getFloat(Constants.PREFS_KEY_SETTINGS_SCALING, Constants.DEFAULT_SCALING));
+            intent.putExtra(MainService.EXTRA_FILE_TRANSFER, prefs.getBoolean(Constants.PREFS_KEY_SETTINGS_FILE_TRANSFER, Constants.DEFAULT_FILE_TRANSFER));
+            intent.putExtra(MainService.EXTRA_VIEW_ONLY, prefs.getBoolean(Constants.PREFS_KEY_SETTINGS_VIEW_ONLY, Constants.DEFAULT_VIEW_ONLY));
+            intent.putExtra(MainService.EXTRA_LISTEN_PORT, prefs.getInt(Constants.PREFS_KEY_SETTINGS_PORT_LISTEN, Constants.DEFAULT_PORT_LISTEN));
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent);
             } else {
