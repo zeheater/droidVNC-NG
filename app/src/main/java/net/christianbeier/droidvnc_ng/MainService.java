@@ -64,10 +64,43 @@ import io.reactivex.rxjava3.subjects.Subject;
 
 public class MainService extends Service {
 
+    /*
+        Public Intent API.
+    */
+
+    /** Starts the server. */
+    public final static String ACTION_START = "start";
+    /** Make an outbound connection. Will do nothing if the server was not started before. */
+    public final static String ACTION_CONNECT = "connect";
+    /** Stops the server. */
+    public final static String ACTION_STOP = "stop";
+
+    /** String Extra containing password. Valid for {@link #ACTION_START}. */
+    public final static String EXTRA_PASSWORD = "password";
+    /** Float Extra describing server-side framebuffer scaling. Valid for {@link #ACTION_START}. */
+    public final static String EXTRA_SCALING = "scaling";
+    /** Boolean Extra toggling the file transfer feature. Valid for {@link #ACTION_START}. */
+    public final static String EXTRA_FILE_TRANSFER = "file_transfer";
+    /**  Boolean Extra toggling view-only mode. Valid for {@link #ACTION_START}. */
+    public final static String EXTRA_VIEW_ONLY = "view_only";
+    /** Integer Extra setting the listening port. Set to `-1` to disable listening. Valid for {@link #ACTION_START}. */
+    public final static String EXTRA_LISTEN_PORT = "listen_port";
+    /** String Extra setting the reverse VNC host to connect to. Valid for {@link #ACTION_START} and {@link #ACTION_CONNECT}. */
+    public final static String EXTRA_REVERSE_HOST = "reverse_host";
+    /** Integer Extra setting the reverse VNC port to connect to. Valid for {@link #ACTION_START} and {@link #ACTION_CONNECT}. */
+    public final static String EXTRA_REVERSE_PORT = "reverse_port";
+    /** String Extra setting the VNC repeater host to connect to. Valid for {@link #ACTION_START} and {@link #ACTION_CONNECT}. */
+    public final static String EXTRA_REPEATER_HOST = "repeater_host";
+    /** Integer Extra setting the VNC repeater port to connect to. Valid for {@link #ACTION_START} and {@link #ACTION_CONNECT}. */
+    public final static String EXTRA_REPEATER_PORT = "repeater_port";
+    /** String Extra setting the VNC repeater ID to identify as. Valid for {@link #ACTION_START} and {@link #ACTION_CONNECT}. */
+    public final static String EXTRA_REPEATER_ID = "repeater_id";
+
+    /*
+        Internal stuff.
+     */
     private static final String TAG = "MainService";
     private static final int NOTIFICATION_ID = 11;
-    final static String ACTION_START = "start";
-    final static String ACTION_STOP = "stop";
 
     final static String ACTION_HANDLE_MEDIA_PROJECTION_RESULT = "action_handle_media_projection_result";
     final static String EXTRA_MEDIA_PROJECTION_RESULT_DATA = "result_data_media_projection";
