@@ -29,7 +29,6 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.PixelFormat;
@@ -42,7 +41,6 @@ import android.media.projection.MediaProjectionManager;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
-import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.util.DisplayMetrics;
 import android.util.Log;
@@ -124,6 +122,9 @@ public class MainService extends Service {
 
     private PowerManager.WakeLock mWakeLock;
 
+    private int mPort;
+    private float mScaling;
+
     private static MainService instance;
 
     private static final Subject<StatusEvent> mStatusEventStream = BehaviorSubject.createDefault(StatusEvent.STOPPED).toSerialized();
@@ -166,8 +167,6 @@ public class MainService extends Service {
 
         instance = this;
 
-        mStatusEventStream.onNext(StatusEvent.STARTED);
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             /*
                 Create notification channel
@@ -207,22 +206,6 @@ public class MainService extends Service {
          */
         //noinspection deprecation
         mWakeLock = ((PowerManager) instance.getSystemService(Context.POWER_SERVICE)).newWakeLock((PowerManager.SCREEN_DIM_WAKE_LOCK| PowerManager.ACQUIRE_CAUSES_WAKEUP | PowerManager.ON_AFTER_RELEASE), TAG + ":clientsConnected");
-
-        /*
-            Start the server FIXME move this to intent handling?
-         */
-        DisplayMetrics displayMetrics = new DisplayMetrics();
-        WindowManager wm = (WindowManager) getApplicationContext().getSystemService(Context.WINDOW_SERVICE);
-        wm.getDefaultDisplay().getRealMetrics(displayMetrics);
-
-        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-
-        if (!vncStartServer(displayMetrics.widthPixels,
-                displayMetrics.heightPixels,
-                prefs.getInt(Constants.PREFS_KEY_SETTINGS_PORT, 5900),
-                Settings.Secure.getString(getContentResolver(), "bluetooth_name"),
-                prefs.getString(Constants.PREFS_KEY_SETTINGS_PASSWORD, "")))
-            stopSelf();
     }
 
 
@@ -284,7 +267,7 @@ public class MainService extends Service {
         if(ACTION_HANDLE_INPUT_RESULT.equals(intent.getAction())) {
             Log.d(TAG, "onStartCommand: handle input result");
             // Step 2: coming back from input permission check, now setup InputService and ask for write storage permission
-            InputService.setScaling(PreferenceManager.getDefaultSharedPreferences(this).getFloat(Constants.PREFS_KEY_SETTINGS_SCALING, Constants.DEFAULT_SCALING));
+            InputService.setScaling(mScaling);
             Intent writeStorageRequestIntent = new Intent(this, WriteStorageRequestActivity.class);
             writeStorageRequestIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(writeStorageRequestIntent);
@@ -292,6 +275,29 @@ public class MainService extends Service {
 
         if(ACTION_START.equals(intent.getAction())) {
             Log.d(TAG, "onStartCommand: start");
+
+            /*
+                Start the server here already.
+            */
+            DisplayMetrics displayMetrics = new DisplayMetrics();
+            WindowManager wm = (WindowManager) getApplicationContext().getSystemService(Context.WINDOW_SERVICE);
+            wm.getDefaultDisplay().getRealMetrics(displayMetrics);
+            // we need the port for getIPv4sAndPorts()
+            mPort = intent.getIntExtra(EXTRA_LISTEN_PORT, Constants.DEFAULT_PORT_LISTEN);
+            // save this for later
+            mScaling = intent.getFloatExtra(EXTRA_SCALING, Constants.DEFAULT_SCALING);
+
+            if (!vncStartServer(displayMetrics.widthPixels,
+                    displayMetrics.heightPixels,
+                    intent.getIntExtra(EXTRA_LISTEN_PORT, Constants.DEFAULT_PORT_LISTEN),
+                    Settings.Secure.getString(getContentResolver(), "bluetooth_name"),
+                    intent.getStringExtra(EXTRA_PASSWORD) != null ? intent.getStringExtra(EXTRA_PASSWORD) : "")) {
+                stopSelf();
+                return START_NOT_STICKY;
+            }
+            // we can be sure here the server was started and onCreate() was run
+            mStatusEventStream.onNext(StatusEvent.STARTED);
+
             // Step 1: check input permission
             Intent inputRequestIntent = new Intent(this, InputRequestActivity.class);
             inputRequestIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -361,9 +367,8 @@ public class MainService extends Service {
         wm.getDefaultDisplay().getRealMetrics(metrics);
 
         // apply scaling preference
-        float scaling = PreferenceManager.getDefaultSharedPreferences(this).getFloat(Constants.PREFS_KEY_SETTINGS_SCALING, Constants.DEFAULT_SCALING);
-        int scaledWidth = (int) (metrics.widthPixels * scaling);
-        int scaledHeight = (int) (metrics.heightPixels * scaling);
+        int scaledWidth = (int) (metrics.widthPixels * mScaling);
+        int scaledHeight = (int) (metrics.heightPixels * mScaling);
 
         // only set this by detecting quirky hardware if the user has not set manually
         if(!mHasPortraitInLandscapeWorkaroundSet && Build.FINGERPRINT.contains("rk3288")  && metrics.widthPixels > 800) {
@@ -524,11 +529,10 @@ public class MainService extends Service {
      */
     public static ArrayList<String> getIPv4sAndPorts() {
 
-        int port = 5900;
+        int port = Constants.DEFAULT_PORT_LISTEN;
 
         try {
-            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(instance);
-            port = prefs.getInt(Constants.PREFS_KEY_SETTINGS_PORT, 5900);
+            port = instance.mPort;
         } catch (NullPointerException e) {
             //unused
         }
