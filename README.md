@@ -72,6 +72,36 @@ You can:
 5. Figure out your public adress i.e. <https://www.hashemian.com/whoami/>.
 6. Use this address and port from above to connect to your device.
 
+### Remote Control via the Intent Interface
+
+droidVNC-NG can also be started in a "headless" mode where the app's main Service is not started
+from the droidVNC-NG Admin Panel, but from some other instance by means of Intents. This allows
+starting the VNC server from other apps or on certain events.
+
+You basically send an Intent to "net.christianbeier.droidvnc_ng.MainService" with one the following
+Actions and associated Extras set:
+
+* Actions:
+  * `ACTION_START`: Starts the server.
+  * `ACTION_CONNECT`: Make an outbound connection. Will do nothing if the server was not started before.
+  * `ACTION_STOP`: Stops the server.
+
+* Extras:
+
+| Extra                 | Valid with Action                | Description                                                                 | Default Value   |
+|-----------------------|----------------------------------|-----------------------------------------------------------------------------|-----------------|
+| `EXTRA_PASSWORD`      | `ACTION_START`                   | String Extra containing password.                                           |                 |
+| `EXTRA_SCALING`       | `ACTION_START`                   | Float Extra describing server-side framebuffer scaling.                     |`1.0f`           |
+| `EXTRA_FILE_TRANSFER` | `ACTION_START`                   | Boolean Extra toggling the file transfer feature.                           |`true`           |
+| `EXTRA_VIEW_ONLY`     | `ACTION_START`                   | Boolean Extra toggling view-only mode.                                      |`false`          |
+| `EXTRA_LISTEN_PORT`   | `ACTION_START`                   | Integer Extra setting the listening port. Set to `-1` to disable listening. |`5900`           |
+| `EXTRA_REVERSE_HOST`  | `ACTION_START`, `ACTION_CONNECT` | String Extra setting the reverse VNC host to connect to.                    |                 |
+| `EXTRA_REVERSE_PORT`  | `ACTION_START`, `ACTION_CONNECT` | Integer Extra setting the reverse VNC port to connect to.                   |`5500`           |
+| `EXTRA_REPEATER_HOST` | `ACTION_START`, `ACTION_CONNECT` | String Extra setting the VNC repeater host to connect to.                   |                 |
+| `EXTRA_REPEATER_PORT` | `ACTION_START`, `ACTION_CONNECT` | Integer Extra setting the VNC repeater port to connect to.                  |`5500`           |
+| `EXTRA_REPEATER_ID`   | `ACTION_START`, `ACTION_CONNECT` | String Extra setting the VNC repeater ID to identify as.                    |                 |
+
+
 ## Notes
 
 * Requires at least Android 7.
