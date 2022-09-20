@@ -76,7 +76,7 @@ public class InputService extends AccessibilityService {
     private static int pivotEnd = 0;
 
 	@Override
-	public void onAccessibilityEvent( AccessibilityEvent event ) {
+	public void onAccessibilityEvent(AccessibilityEvent event) {
         // Detect when focus or text selection change when user click a edittext view
         String eventType = AccessibilityEvent.eventTypeToString(event.getEventType());
         if (event.getEventType() == AccessibilityEvent.TYPE_VIEW_FOCUSED ||
@@ -86,7 +86,7 @@ public class InputService extends AccessibilityService {
             if (event.getClassName().equals("android.widget.EditText")) {
                 viewUnderFocus = event.getSource();
 
-                if (viewUnderFocus.getText() != null) {
+                if (viewUnderFocus != null && viewUnderFocus.getText() != null) {
                     // Get current view text value
                     String currBuff = viewUnderFocus.getText().toString();
                     int start = viewUnderFocus.getTextSelectionStart();
@@ -110,8 +110,6 @@ public class InputService extends AccessibilityService {
             } else {
                 // Do something else
             }
-        } else if (eventType.equals("TYPE_VIEW_TEXT_TRAVERSED_AT_MOVEMENT_GRANULARITY")) {
-            //
         } else {
             // System.out.println(eventType);
         }
@@ -217,18 +215,22 @@ public class InputService extends AccessibilityService {
 
     private static void commitBufferToView() {
         // Commit remoteBuffer to actual view
-        instance.mMainHandler.post(() -> {
-            Bundle args = new Bundle();
-            args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, remoteBuffer);
-            boolean performAction = instance.viewUnderFocus.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args);
-            if (performAction) {
-                Bundle args2 = new Bundle();
-                args2.putInt("ACTION_ARGUMENT_SELECTION_START_INT", bufferPivot);
-                args2.putInt("ACTION_ARGUMENT_SELECTION_END_INT", bufferPivot);
-                instance.viewUnderFocus.refresh();
-                instance.viewUnderFocus.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, args2);
-            }
-        });
+        if (instance.viewUnderFocus != null) {
+            instance.mMainHandler.post(() -> {
+                Bundle args = new Bundle();
+                args.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, remoteBuffer);
+                boolean performAction = instance.viewUnderFocus.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args);
+                if (performAction) {
+                    Bundle args2 = new Bundle();
+                    args2.putInt("ACTION_ARGUMENT_SELECTION_START_INT", bufferPivot);
+                    args2.putInt("ACTION_ARGUMENT_SELECTION_END_INT", bufferPivot);
+                    instance.viewUnderFocus.refresh();
+                    instance.viewUnderFocus.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, args2);
+                }
+            });
+        } else {
+            System.out.println("viewUnderFocus is null");
+        }
     }
 
 	public static void onKeyEvent(int down, long keysym, long client) {
@@ -237,7 +239,11 @@ public class InputService extends AccessibilityService {
         /*
             Handle symbol+alpha+numeric keyboard
          */
-        if (keysym >= 32 && keysym <= 127 && down == 0) {
+        if ((keysym >= 32 && keysym <= 127 || keysym == 65293) && down == 0) {
+
+            // <Enter> is keysym = 65293, (char)10
+            if (keysym == 65293) keysym = 10;
+
             if (bufferPivot == pivotEnd) {
                 // Not a block, insert normally
                 remoteBuffer.insert(bufferPivot, (char) keysym);
@@ -261,8 +267,10 @@ public class InputService extends AccessibilityService {
                 if (bufferPivot >= 0) {
                     if (bufferPivot == pivotEnd) {
                         // If bufferPivot equal pivotEnd, then it's not a block removal
-                        remoteBuffer.deleteCharAt(bufferPivot - 1);
-                        if (bufferPivot > 0) bufferPivot -= 1;
+                        if (bufferPivot > 0) {
+                            remoteBuffer.deleteCharAt(bufferPivot - 1);
+                            bufferPivot -= 1;
+                        }
                     } else {
                         // It's a block remove, replace with empty string
                         remoteBuffer.replace(bufferPivot, pivotEnd, "");
