@@ -75,43 +75,58 @@ public class InputService extends AccessibilityService {
     private static int bufferPivot = 0;
     private static int pivotEnd = 0;
 
+    private void updateRemoteBuffer() {
+        if (viewUnderFocus != null &&
+            viewUnderFocus.getText() != null &&
+            viewUnderFocus.refresh()
+        ) {
+            // Get current view text value
+            String currBuff = viewUnderFocus.getText().toString();
+            int start = viewUnderFocus.getTextSelectionStart();
+            if (start == -1) start = 0;
+            int end = viewUnderFocus.getTextSelectionEnd();
+            if (end == -1) end = 0;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                if (viewUnderFocus.getHintText() != null) {
+                    // Weird quirk, even if the view is empty, but if it contains hint, then the hint become the value, detect and remove here
+                    if (currBuff.equals(viewUnderFocus.getHintText().toString()))
+                        currBuff = "";
+                }
+            }
+
+            // Update remote buffer and pivot
+            remoteBuffer.replace(0, remoteBuffer.length(), currBuff);
+            bufferPivot = start;
+            pivotEnd = end;
+        } else { /*Do nothing*/ }
+    }
+
 	@Override
 	public void onAccessibilityEvent(AccessibilityEvent event) {
         // Detect when focus or text selection change when user click a edittext view
-        String eventType = AccessibilityEvent.eventTypeToString(event.getEventType());
-        if (event.getEventType() == AccessibilityEvent.TYPE_VIEW_FOCUSED ||
-            event.getEventType() == AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED
+        // String eventDesc = AccessibilityEvent.eventTypeToString(event.getEventType());
+        int eventType = event.getEventType();
+
+        if (eventType == AccessibilityEvent.TYPE_VIEW_FOCUSED ||
+            eventType == AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED ||
+            eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
         ) {
-            // If detected event view class name is EditText
-            if (event.getClassName().equals("android.widget.EditText")) {
-                viewUnderFocus = event.getSource();
-
-                if (viewUnderFocus != null && viewUnderFocus.getText() != null) {
-                    // Get current view text value
-                    String currBuff = viewUnderFocus.getText().toString();
-                    int start = viewUnderFocus.getTextSelectionStart();
-                    if (start == -1) start = 0;
-                    int end = viewUnderFocus.getTextSelectionEnd();
-                    if (end == -1) end = 0;
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                        if (viewUnderFocus.getHintText() != null) {
-                            // Weird quirk, even if the view is empty, but if it contains hint, then the hint become the value, detect and remove here
-                            if (currBuff.equals(viewUnderFocus.getHintText().toString()))
-                                currBuff = "";
-                        }
-                    }
-
-                    remoteBuffer.replace(0, remoteBuffer.length(), currBuff);
-                    bufferPivot = start;
-                    pivotEnd = end;
-
-                } else { /*Do nothing*/ }
-
+            if (eventType == AccessibilityEvent.TYPE_VIEW_FOCUSED ||
+                eventType == AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED
+            ) {
+                // Only care when event class name is EditText
+                if (event.getClassName().equals("android.widget.EditText")) {
+                    viewUnderFocus = event.getSource();
+                } else {
+                    // Handle view other than EditText
+                }
             } else {
-                // Do something else
+                // event.getSource() when eventType is WINDOW_CONTENT_CHANGED, returns null
+                // Do nothing
             }
+            updateRemoteBuffer();
         } else {
-            // System.out.println(eventType);
+            // System.out.println("Unhandled: "+eventType);
         }
     }
 
