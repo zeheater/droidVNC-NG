@@ -86,13 +86,6 @@ public class InputService extends AccessibilityService {
             if (start == -1) start = 0;
             int end = viewUnderFocus.getTextSelectionEnd();
             if (end == -1) end = 0;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                if (viewUnderFocus.getHintText() != null) {
-                    // Weird quirk, even if the view is empty, but if it contains hint, then the hint become the value, detect and remove here
-                    if (currBuff.equals(viewUnderFocus.getHintText().toString()))
-                        currBuff = "";
-                }
-            }
 
             // Update remote buffer and pivot
             remoteBuffer.replace(0, remoteBuffer.length(), currBuff);
@@ -101,33 +94,54 @@ public class InputService extends AccessibilityService {
         } else { /*Do nothing*/ }
     }
 
-	@Override
-	public void onAccessibilityEvent(AccessibilityEvent event) {
+    private void updateViewUnderFocus(AccessibilityNodeInfo n) {
+        /*  Only care if event source is editable and class name is android.widget.EditText
+            event in custom layout / AutoCompleteEditText is subclass of android.widget.EditText.
+         */
+        if (n.isEditable() && n.getClassName().equals("android.widget.EditText")) {
+            viewUnderFocus = n;
+        } else {
+            //  View is editable but not edittext e.g android.widget.Spinner
+            /*  For some odd reason, android.widget.Spinner is editable, and we can actually
+                use accessibility api to type into it. So we limit ourselves to only EditText
+             */
+
+            // Update view under focus to null, because the previous one is changed.
+            viewUnderFocus = null;
+        }
+    }
+
+    private void findEditableFromEvent(AccessibilityEvent event) {
         // Detect when focus or text selection change when user click a edittext view
         // String eventDesc = AccessibilityEvent.eventTypeToString(event.getEventType());
         int eventType = event.getEventType();
 
         if (eventType == AccessibilityEvent.TYPE_VIEW_FOCUSED ||
-            eventType == AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED ||
-            eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED
+            eventType == AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED
         ) {
-            if (eventType == AccessibilityEvent.TYPE_VIEW_FOCUSED ||
-                eventType == AccessibilityEvent.TYPE_VIEW_TEXT_SELECTION_CHANGED
-            ) {
-                // Only care when event class name is EditText
-                if (event.getClassName().equals("android.widget.EditText")) {
-                    viewUnderFocus = event.getSource();
-                } else {
-                    // Handle view other than EditText
-                }
+            /*  Two methods for finding editable EditText
+                1. from AccessibilityEvent event getSource (main method)
+                2. from getRootInActiveWindow.findFocus (backup plan)
+             */
+            AccessibilityNodeInfo eventNode = event.getSource();
+            if (eventNode == null) {
+                AccessibilityNodeInfo rootView = getRootInActiveWindow();
+                if (rootView == null) return ;
+                AccessibilityNodeInfo node = rootView.findFocus(AccessibilityNodeInfo.FOCUS_INPUT);
+                if (node == null) return ;
+                updateViewUnderFocus(node);
             } else {
-                // event.getSource() when eventType is WINDOW_CONTENT_CHANGED, returns null
-                // Do nothing
+                updateViewUnderFocus(event.getSource());
             }
-            updateRemoteBuffer();
         } else {
-            // System.out.println("Unhandled: "+eventType);
+            // event.getSource() when eventType is WINDOW_CONTENT_CHANGED, returns null
+            // do not update viewUnderFocus, just update remote buffer
         }
+        updateRemoteBuffer();
+    }
+	@Override
+	public void onAccessibilityEvent(AccessibilityEvent event) {
+        findEditableFromEvent(event);
     }
 
 	@Override
@@ -241,10 +255,12 @@ public class InputService extends AccessibilityService {
                     args2.putInt("ACTION_ARGUMENT_SELECTION_END_INT", bufferPivot);
                     instance.viewUnderFocus.refresh();
                     instance.viewUnderFocus.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, args2);
+                } else {
+                    Log.e(TAG, "performAction Failed");
                 }
             });
         } else {
-            System.out.println("viewUnderFocus is null");
+            Log.i(TAG, "viewUnderFocus is null");
         }
     }
 
